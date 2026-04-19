@@ -1,64 +1,141 @@
 #!/bin/bash
+set -e
 
-# ==============================================================================
-# TaskFlow EC2 Automated Setup Script (Nginx + Gunicorn + Systemd)
-# Run this on your EC2 instance with sudo:
-# chmod +x setup_ec2.sh
-# sudo ./setup_ec2.sh
-# ==============================================================================
+echo "======================================================"
+echo "  AWS EC2 + RDS Complete Django Deployment Script   "
+echo "======================================================"
 
-PROJECT_DIR="/home/ubuntu/awsexam123"
-USER="ubuntu"
-GROUP="www-data"
+# Dynamically pick up the current directory of the cloned repo
+APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+USER=$(whoami)
+echo "Setting up application at: $APP_DIR"
 
-echo "🚀 Starting TaskFlow EC2 Setup..."
-
-# 1. Install prerequisites
-echo "📦 Installing prerequisites..."
-sudo apt update
-sudo apt install -y nginx python3-pip python3-venv python3-dev libmysqlclient-dev default-libmysqlclient-dev build-essential
-
-# 2. Create log and socket directories
-echo "📁 Setting up directories..."
-sudo mkdir -p /var/log/taskflow /run/taskflow
-sudo chown -R $USER:$GROUP /var/log/taskflow /run/taskflow
-sudo chmod -R 775 /var/log/taskflow /run/taskflow
-
-# 3. Secure project directory
-sudo chown -R $USER:$USER $PROJECT_DIR
-sudo chmod -R 755 $PROJECT_DIR
-
-# 4. Create systemd socket unit
-echo "⚙️ Creating systemd socket unit..."
-sudo cp $PROJECT_DIR/systemd/taskflow.socket /etc/systemd/system/
-sudo chown root:root /etc/systemd/system/taskflow.socket
-
-# 5. Create systemd service unit
-echo "⚙️ Creating systemd service unit..."
-sudo cp $PROJECT_DIR/systemd/taskflow.service /etc/systemd/system/
-sudo chown root:root /etc/systemd/system/taskflow.service
-
-# 6. Copy Nginx config
-echo "🌐 Configuring Nginx..."
-sudo cp $PROJECT_DIR/nginx/taskflow.conf /etc/nginx/sites-available/taskflow
-sudo ln -sf /etc/nginx/sites-available/taskflow /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-
-# 7. Test Nginx config
-echo "🔍 Testing Nginx config..."
-if sudo nginx -t; then
-    echo "✅ Nginx config OK."
-else
-    echo "❌ Nginx config failed. Exiting."
+if [ ! -f "$APP_DIR/.env" ]; then
+    echo "--------------------------------------------------------"
+    echo "⚠️  WARNING: .env file not found!"
+    if [ -f "$APP_DIR/.env.example" ]; then
+        echo "Creating it from .env.example..."
+        cp "$APP_DIR/.env.example" "$APP_DIR/.env"
+    fi
+    echo "--------------------------------------------------------"
+    echo "ACTION REQUIRED: Please inject your RDS credentials before deploying!"
+    echo "1. Edit the file by running: nano $APP_DIR/.env"
+    echo "2. Once saved, re-run this script: ./setup_ec2.sh"
     exit 1
 fi
 
-# 8. Reload and start services
-echo "🔄 Reloading systemd and services..."
-sudo systemctl daemon-reload
-sudo systemctl enable --now taskflow.socket taskflow.service
-sudo systemctl restart nginx
+echo ">> Installing necessary system packages (Python, Nginx, MySQL libs)..."
+sudo apt update -y
+sudo apt install python3 python3-venv python3-pip python3-dev pkg-config default-libmysqlclient-dev git nginx curl -y
 
-echo "✅ Setup complete! TaskFlow should now be accessible via Nginx."
-echo "Check status:"
-echo "sudo systemctl status taskflow.service nginx"
+echo ">> Securing directory permissions for Nginx access..."
+# Grant Nginx (www-data) traversal rights into the home & app directories
+sudo chmod 755 $HOME
+sudo chmod 755 $APP_DIR
+# Add www-data to the current user's group so it can read the Unix socket
+sudo usermod -a -G $USER www-data
+
+echo ">> Setting up Python Virtual Environment..."
+cd "$APP_DIR"
+python3 -m venv venv
+source venv/bin/activate
+
+echo ">> Installing Python dependencies..."
+pip install --upgrade pip
+pip install -r requirements.txt
+
+echo ">> Synchronizing Database (Makemigrations & Migrate)..."
+python manage.py makemigrations
+python manage.py migrate
+
+echo ">> Collecting Static Files for Nginx..."
+python manage.py collectstatic --noinput
+
+echo ">> Configuring Gunicorn Systemd daemon..."
+sudo bash -c "cat > /etc/systemd/system/gunicorn.service <<EOF
+[Unit]
+Description=Gunicorn daemon for AWS Django App
+After=network.target
+
+[Service]
+User=$USER
+Group=www-data
+WorkingDirectory=$APP_DIR
+EnvironmentFile=$APP_DIR/.env
+ExecStart=$APP_DIR/venv/bin/gunicorn --access-logfile - --workers 3 --bind unix:$APP_DIR/app.sock awsproject.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
+echo ">> Configuring Nginx Proxy..."
+sudo bash -c "cat > /etc/nginx/sites-available/django_app <<EOF
+server {
+    listen 80;
+    server_name _;
+
+    location = /favicon.ico { access_log off; log_not_found off; }
+    
+    location /static/ {
+        alias $APP_DIR/staticfiles/;
+    }
+
+    location /media/ {
+        alias $APP_DIR/media/;
+    }
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:$APP_DIR/app.sock;
+    }
+}
+EOF"
+
+echo ">> Activating Nginx Site..."
+sudo ln -sf /etc/nginx/sites-available/django_app /etc/nginx/sites-enabled/
+sudo rm -f /etc/nginx/sites-enabled/default
+
+echo ">> Booting Web Servers..."
+# Stop any stale gunicorn instance (removes leftover socket file)
+sudo systemctl stop gunicorn 2>/dev/null || true
+# Remove leftover socket file if gunicorn crashed and left one behind
+sudo rm -f "$APP_DIR/app.sock"
+sudo systemctl daemon-reload
+sudo systemctl start gunicorn
+sudo systemctl enable gunicorn
+sudo systemctl restart nginx
+sudo systemctl enable nginx
+
+echo ">> Fixing socket permissions for Nginx..."
+# Wait briefly for gunicorn to create the socket, then lock down permissions
+sleep 2
+if [ -S "$APP_DIR/app.sock" ]; then
+    sudo chmod 660 "$APP_DIR/app.sock"
+    sudo chown $USER:www-data "$APP_DIR/app.sock"
+    echo "   ✅ Socket permissions set correctly."
+else
+    echo "   ⚠️  WARNING: app.sock not found — Gunicorn may have failed to start."
+    echo "   Run: sudo journalctl -u gunicorn -n 30 --no-pager"
+fi
+
+echo "======================================================"
+echo " ✅ DEPLOYMENT 100% COMPLETE & LIVE!"
+echo "======================================================"
+echo "Your app is now running globally via Nginx on Port 80."
+echo ""
+echo ">> Final Health Check..."
+GUNICORN_STATUS=\$(sudo systemctl is-active gunicorn)
+NGINX_STATUS=\$(sudo systemctl is-active nginx)
+echo "   Gunicorn : \$GUNICORN_STATUS"
+echo "   Nginx    : \$NGINX_STATUS"
+if [ "\$GUNICORN_STATUS" != "active" ] || [ "\$NGINX_STATUS" != "active" ]; then
+    echo ""
+    echo "  ⚠️  One or more services are NOT running. Debug with:"
+    echo "     sudo journalctl -u gunicorn -n 30 --no-pager"
+    echo "     sudo journalctl -u nginx -n 30 --no-pager"
+else
+    echo "   ✅ Both services are active. Your app is live!"
+fi
+echo ""
+echo "If you need an admin account to login, run:"
+echo "source venv/bin/activate && python manage.py createsuperuser"
