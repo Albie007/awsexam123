@@ -155,11 +155,11 @@ echo "======================================================"
 echo "Your app is now running globally via Nginx on Port 80."
 echo ""
 echo ">> Final Health Check..."
-GUNICORN_STATUS=\$(sudo systemctl is-active gunicorn)
-NGINX_STATUS=\$(sudo systemctl is-active nginx)
-echo "   Gunicorn : \$GUNICORN_STATUS"
-echo "   Nginx    : \$NGINX_STATUS"
-if [ "\$GUNICORN_STATUS" != "active" ] || [ "\$NGINX_STATUS" != "active" ]; then
+GUNICORN_STATUS=$(sudo systemctl is-active gunicorn)
+NGINX_STATUS=$(sudo systemctl is-active nginx)
+echo "   Gunicorn : $GUNICORN_STATUS"
+echo "   Nginx    : $NGINX_STATUS"
+if [ "$GUNICORN_STATUS" != "active" ] || [ "$NGINX_STATUS" != "active" ]; then
     echo ""
     echo "  ⚠️  One or more services are NOT running. Debug with:"
     echo "     sudo journalctl -u gunicorn -n 30 --no-pager"
