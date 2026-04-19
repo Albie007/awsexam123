@@ -29,8 +29,8 @@ if [ ! -f "$APP_DIR/.env" ]; then
     echo ""
     db_pass=${db_pass:-root}
     
-    read -p "Enter your EC2 Public IP or Domain [localhost]: " allowed_hosts
-    allowed_hosts=${allowed_hosts:-localhost}
+    read -p "Enter your EC2 Public IP or Domain [*]: " allowed_hosts
+    allowed_hosts=${allowed_hosts:-*}
 
     # Generate a secure random Django secret key
     SECRET_KEY=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 50 || echo "django-insecure-random-$(date +%s)")
