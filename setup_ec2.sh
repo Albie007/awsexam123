@@ -7,8 +7,10 @@ echo "======================================================"
 
 # Dynamically pick up the current directory of the cloned repo
 APP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-USER=$(whoami)
 echo "Setting up application at: $APP_DIR"
+
+# Try to get the original user calling sudo, or fallback to the current user
+REAL_USER=${SUDO_USER:-$USER}
 
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "--------------------------------------------------------"
@@ -31,7 +33,7 @@ if [ ! -f "$APP_DIR/.env" ]; then
     allowed_hosts=${allowed_hosts:-localhost}
 
     # Generate a secure random Django secret key
-    SECRET_KEY=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 50)
+    SECRET_KEY=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 50 || echo "django-insecure-random-$(date +%s)")
 
     cat > "$APP_DIR/.env" <<EOF
 # Django
@@ -53,12 +55,12 @@ echo ">> Installing necessary system packages (Python, Nginx, MySQL libs)..."
 sudo apt update -y
 sudo apt install python3 python3-venv python3-pip python3-dev pkg-config default-libmysqlclient-dev git nginx curl -y
 
-echo ">> Securing directory permissions for Nginx access..."
+echo ">> Securing $REAL_USER directory permissions for Nginx access..."
 # Grant Nginx (www-data) traversal rights into the home & app directories
-sudo chmod 755 $HOME
+sudo chmod 755 /home/$REAL_USER || true
 sudo chmod 755 $APP_DIR
 # Add www-data to the current user's group so it can read the Unix socket
-sudo usermod -a -G $USER www-data
+sudo usermod -a -G $REAL_USER www-data
 
 echo ">> Setting up Python Virtual Environment..."
 cd "$APP_DIR"
@@ -83,7 +85,7 @@ Description=Gunicorn daemon for AWS Django App
 After=network.target
 
 [Service]
-User=$USER
+User=$REAL_USER
 Group=www-data
 WorkingDirectory=$APP_DIR
 EnvironmentFile=$APP_DIR/.env
@@ -136,7 +138,7 @@ echo ">> Fixing socket permissions for Nginx..."
 sleep 2
 if [ -S "$APP_DIR/app.sock" ]; then
     sudo chmod 660 "$APP_DIR/app.sock"
-    sudo chown $USER:www-data "$APP_DIR/app.sock"
+    sudo chown $REAL_USER:www-data "$APP_DIR/app.sock"
     echo "   ✅ Socket permissions set correctly."
 else
     echo "   ⚠️  WARNING: app.sock not found — Gunicorn may have failed to start."
