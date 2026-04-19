@@ -7,7 +7,7 @@
 # sudo ./setup_ec2.sh
 # ==============================================================================
 
-PROJECT_DIR="$(pwd)"
+PROJECT_DIR="/home/ubuntu/awsexam123"
 USER="ubuntu"
 GROUP="www-data"
 
