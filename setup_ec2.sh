@@ -51,6 +51,10 @@ EOF
     echo "✅ .env file successfully created!"
 fi
 
+echo ">> Auto-configuring ALLOWED_HOSTS to prevent connection blocks..."
+# Forcefully update ALLOWED_HOSTS so it always works immediately on EC2
+sed -i 's/^ALLOWED_HOSTS=.*/ALLOWED_HOSTS=*,127.0.0.1,localhost/' "$APP_DIR/.env"
+
 echo ">> Installing necessary system packages (Python, Nginx, MySQL libs)..."
 sudo apt update -y
 sudo apt install python3 python3-venv python3-pip python3-dev pkg-config default-libmysqlclient-dev git nginx curl -y
