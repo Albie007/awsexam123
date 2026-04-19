@@ -16,7 +16,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # ---------------------------------------------------------------------------
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me')
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+# Hardcoded to wildcard to make deployment 100% foolproof and avoid Bad Request 400s
+ALLOWED_HOSTS = ['*']
 
 # ---------------------------------------------------------------------------
 # Application definition

@@ -122,9 +122,13 @@ server {
 }
 EOF"
 
+echo ">> Sweeping old configs to prevent Port 80 conflicts..."
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo rm -f /etc/nginx/sites-enabled/taskflow || true
+sudo rm -f /etc/nginx/sites-available/taskflow || true
+
 echo ">> Activating Nginx Site..."
 sudo ln -sf /etc/nginx/sites-available/django_app /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
 
 echo ">> Booting Web Servers..."
 # Stop any stale gunicorn instance (removes leftover socket file)
