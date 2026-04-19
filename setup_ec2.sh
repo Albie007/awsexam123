@@ -12,16 +12,41 @@ echo "Setting up application at: $APP_DIR"
 
 if [ ! -f "$APP_DIR/.env" ]; then
     echo "--------------------------------------------------------"
-    echo "⚠️  WARNING: .env file not found!"
-    if [ -f "$APP_DIR/.env.example" ]; then
-        echo "Creating it from .env.example..."
-        cp "$APP_DIR/.env.example" "$APP_DIR/.env"
-    fi
+    echo "🚀 Let's set up your Environment file (.env)"
     echo "--------------------------------------------------------"
-    echo "ACTION REQUIRED: Please inject your RDS credentials before deploying!"
-    echo "1. Edit the file by running: nano $APP_DIR/.env"
-    echo "2. Once saved, re-run this script: ./setup_ec2.sh"
-    exit 1
+    read -p "Enter Database Host (RDS endpoint) [localhost]: " db_host
+    db_host=${db_host:-localhost}
+    
+    read -p "Enter Database Name [taskdb]: " db_name
+    db_name=${db_name:-taskdb}
+    
+    read -p "Enter Database User [admin]: " db_user
+    db_user=${db_user:-admin}
+    
+    read -s -p "Enter Database Password [root]: " db_pass
+    echo ""
+    db_pass=${db_pass:-root}
+    
+    read -p "Enter your EC2 Public IP or Domain [localhost]: " allowed_hosts
+    allowed_hosts=${allowed_hosts:-localhost}
+
+    # Generate a secure random Django secret key
+    SECRET_KEY=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 50)
+
+    cat > "$APP_DIR/.env" <<EOF
+# Django
+SECRET_KEY=$SECRET_KEY
+DEBUG=False
+ALLOWED_HOSTS=$allowed_hosts,127.0.0.1,localhost
+
+# MySQL / AWS RDS
+DB_NAME=$db_name
+DB_USER=$db_user
+DB_PASSWORD=$db_pass
+DB_HOST=$db_host
+DB_PORT=3306
+EOF
+    echo "✅ .env file successfully created!"
 fi
 
 echo ">> Installing necessary system packages (Python, Nginx, MySQL libs)..."
