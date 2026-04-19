@@ -9,14 +9,14 @@ Requires=taskflow.socket
 [Service]
 User=ubuntu
 Group=www-data
-WorkingDirectory=/home/ubuntu/awsexam12
+WorkingDirectory=/home/ubuntu/awsexam123
 
 # Load .env variables
-EnvironmentFile=/home/ubuntu/awsexam12/.env
+EnvironmentFile=/home/ubuntu/awsexam123/.env
 
 # Use the gunicorn from the venv
-ExecStart=/home/ubuntu/awsexam12/venv/bin/gunicorn \
-          -c /home/ubuntu/awsexam12/gunicorn.conf.py \
+ExecStart=/home/ubuntu/awsexam123/venv/bin/gunicorn \
+          -c /home/ubuntu/awsexam123/gunicorn.conf.py \
           awsproject.wsgi:application
 
 # Graceful restart on failure
