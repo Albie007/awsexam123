@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block title %}Login – TaskFlow{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+  <div class="auth-card glass">
+    <div class="auth-header">
+      <div class="auth-logo">⚡</div>
+      <h1 class="auth-title">Welcome Back</h1>
+      <p class="auth-sub">Sign in to your TaskFlow account</p>
+    </div>
+
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      {% for field in form %}
+        <div class="field-wrap">
+          <label class="field-label">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <span class="field-error">{{ field.errors|join:", " }}</span>
+          {% endif %}
+        </div>
+      {% endfor %}
+      {% if form.non_field_errors %}
+        <div class="form-error">{{ form.non_field_errors|join:", " }}</div>
+      {% endif %}
+      <button id="btn-login" type="submit" class="btn btn-primary btn-full">Sign In</button>
+    </form>
+
+    <p class="auth-switch">Don't have an account? <a href="{% url 'register' %}">Register</a></p>
+  </div>
+</div>
+{% endblock %}

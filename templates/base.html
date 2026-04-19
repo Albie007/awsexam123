@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}TaskFlow AWS{% endblock %}</title>
+  <meta name="description" content="TaskFlow – a Django task manager deployed on AWS EC2 and RDS." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'taskmanager/css/style.css' %}" />
+</head>
+<body>
+  <!-- Animated background blobs -->
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
+  <div class="bg-blob blob3"></div>
+
+  {% if user.is_authenticated %}
+  <nav class="navbar">
+    <a class="nav-brand" href="{% url 'dashboard' %}">
+      <span class="brand-icon">⚡</span> TaskFlow
+    </a>
+    <div class="nav-links">
+      <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="{% url 'task_create' %}" class="nav-link {% if request.resolver_match.url_name == 'task_create' %}active{% endif %}">+ New Task</a>
+      <a href="{% url 'categories' %}" class="nav-link {% if request.resolver_match.url_name == 'categories' %}active{% endif %}">Categories</a>
+    </div>
+    <div class="nav-user">
+      <span class="user-badge">{{ user.username }}</span>
+      <a href="{% url 'logout' %}" class="btn btn-ghost btn-sm">Logout</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <main class="main-content">
+    {% if messages %}
+    <div class="messages-container">
+      {% for msg in messages %}
+      <div class="alert alert-{{ msg.tags }}">
+        {{ msg }}
+        <button class="alert-close" onclick="this.parentElement.remove()">✕</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <p>TaskFlow &copy; 2025 &mdash; Deployed on <strong>AWS EC2</strong> + <strong>RDS MySQL</strong></p>
+  </footer>
+
+  <script>
+    // Auto-dismiss alerts
+    document.querySelectorAll('.alert').forEach(a => {
+      setTimeout(() => a.style.opacity = '0', 4000);
+      setTimeout(() => a.remove(), 4500);
+    });
+  </script>
+</body>
+</html>

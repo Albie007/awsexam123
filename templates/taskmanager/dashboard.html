@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard – TaskFlow{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<section class="stats-row">
+  <div class="stat-card glass">
+    <div class="stat-icon" style="background:rgba(99,102,241,.2)">📋</div>
+    <div>
+      <div class="stat-value">{{ stats.total }}</div>
+      <div class="stat-label">Total Tasks</div>
+    </div>
+  </div>
+  <div class="stat-card glass">
+    <div class="stat-icon" style="background:rgba(251,191,36,.15)">⏳</div>
+    <div>
+      <div class="stat-value">{{ stats.todo }}</div>
+      <div class="stat-label">To Do</div>
+    </div>
+  </div>
+  <div class="stat-card glass">
+    <div class="stat-icon" style="background:rgba(59,130,246,.15)">🔄</div>
+    <div>
+      <div class="stat-value">{{ stats.in_progress }}</div>
+      <div class="stat-label">In Progress</div>
+    </div>
+  </div>
+  <div class="stat-card glass">
+    <div class="stat-icon" style="background:rgba(34,197,94,.15)">✅</div>
+    <div>
+      <div class="stat-value">{{ stats.done }}</div>
+      <div class="stat-label">Done</div>
+    </div>
+  </div>
+</section>
+
+<!-- Filter Bar -->
+<section class="filter-bar glass">
+  <form method="get" class="filter-form">
+    <input id="search-input" type="text" name="q" value="{{ search }}" placeholder="🔍  Search tasks…" class="form-input search-input" />
+    <select id="filter-status" name="status" class="form-input filter-select" onchange="this.form.submit()">
+      <option value="">All Status</option>
+      <option value="todo"        {% if status == 'todo' %}selected{% endif %}>To Do</option>
+      <option value="in_progress" {% if status == 'in_progress' %}selected{% endif %}>In Progress</option>
+      <option value="done"        {% if status == 'done' %}selected{% endif %}>Done</option>
+    </select>
+    <select id="filter-priority" name="priority" class="form-input filter-select" onchange="this.form.submit()">
+      <option value="">All Priority</option>
+      <option value="high"   {% if priority == 'high' %}selected{% endif %}>🔴 High</option>
+      <option value="medium" {% if priority == 'medium' %}selected{% endif %}>🟡 Medium</option>
+      <option value="low"    {% if priority == 'low' %}selected{% endif %}>🟢 Low</option>
+    </select>
+    <button id="btn-search" type="submit" class="btn btn-primary">Search</button>
+    {% if search or status or priority %}
+    <a href="{% url 'dashboard' %}" class="btn btn-ghost">Clear</a>
+    {% endif %}
+  </form>
+  <a href="{% url 'task_create' %}" class="btn btn-primary btn-new">+ New Task</a>
+</section>
+
+<!-- Task Grid -->
+{% if tasks %}
+<div class="task-grid">
+  {% for task in tasks %}
+  <div class="task-card glass priority-{{ task.priority }} {% if task.status == 'done' %}task-done{% endif %}">
+
+    <div class="task-header">
+      <div class="task-badges">
+        <span class="badge badge-{{ task.status }}">
+          {% if task.status == 'todo' %}⏳ To Do
+          {% elif task.status == 'in_progress' %}🔄 In Progress
+          {% else %}✅ Done{% endif %}
+        </span>
+        <span class="badge badge-priority-{{ task.priority }}">
+          {% if task.priority == 'high' %}🔴{% elif task.priority == 'medium' %}🟡{% else %}🟢{% endif %}
+          {{ task.get_priority_display }}
+        </span>
+      </div>
+      <div class="task-actions">
+        <a href="{% url 'task_toggle' task.pk %}" class="icon-btn" title="Toggle status">🔁</a>
+        <a href="{% url 'task_edit' task.pk %}" class="icon-btn" title="Edit">✏️</a>
+        <a href="{% url 'task_delete' task.pk %}" class="icon-btn icon-btn-danger" title="Delete">🗑️</a>
+      </div>
+    </div>
+
+    <h3 class="task-title">{{ task.title }}</h3>
+
+    {% if task.description %}
+    <p class="task-desc">{{ task.description|truncatewords:20 }}</p>
+    {% endif %}
+
+    <div class="task-footer">
+      {% if task.category %}
+      <span class="category-chip" style="border-color:{{ task.category.color }};color:{{ task.category.color }}">
+        {{ task.category.name }}
+      </span>
+      {% endif %}
+      {% if task.due_date %}
+      <span class="due-date">📅 {{ task.due_date }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{% else %}
+<div class="empty-state glass">
+  <div class="empty-icon">📭</div>
+  <h2>No tasks found</h2>
+  <p>{% if search or status or priority %}Try adjusting your filters.{% else %}Create your first task to get started!{% endif %}</p>
+  <a href="{% url 'task_create' %}" class="btn btn-primary">+ Create Task</a>
+</div>
+{% endif %}
+{% endblock %}

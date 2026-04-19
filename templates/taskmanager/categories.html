@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% block title %}Categories – TaskFlow{% endblock %}
+
+{% block content %}
+<div class="form-page wide">
+  <div class="two-col">
+
+    <!-- Add Category -->
+    <div class="form-card glass">
+      <h2 class="form-title">Add Category</h2>
+      <form method="post" class="task-form">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field-wrap">
+            <label class="field-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <span class="field-error">{{ field.errors|join:", " }}</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <button id="btn-add-category" type="submit" class="btn btn-primary">Add Category</button>
+      </form>
+    </div>
+
+    <!-- Category List -->
+    <div class="cat-list glass">
+      <h2 class="form-title">All Categories</h2>
+      {% if categories %}
+      <ul class="category-ul">
+        {% for cat in categories %}
+        <li class="category-item">
+          <span class="cat-color-dot" style="background:{{ cat.color }}"></span>
+          <span class="cat-name">{{ cat.name }}</span>
+          <span class="cat-count">{{ cat.task_count }} tasks</span>
+          <form method="post" action="{% url 'category_delete' cat.pk %}" style="display:inline">
+            {% csrf_token %}
+            <button id="btn-del-cat-{{ cat.pk }}" type="submit" class="icon-btn icon-btn-danger" onclick="return confirm('Delete {{ cat.name }}?')">🗑️</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+        <p class="empty-text">No categories yet. Add one!</p>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+{% endblock %}

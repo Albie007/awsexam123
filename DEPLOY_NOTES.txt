@@ -1,0 +1,9 @@
+# TaskFlow – AWS EC2 + RDS MySQL Deployment Guide
+# See the full guide in the DEPLOYMENT.md artifact.
+# Quick steps:
+# 1. Create RDS MySQL 8.0 instance
+# 2. Launch EC2 Ubuntu 22.04
+# 3. pip install -r requirements.txt
+# 4. Fill in .env with RDS endpoint
+# 5. python manage.py migrate && collectstatic
+# 6. gunicorn awsproject.wsgi:application --bind 0.0.0.0:8000

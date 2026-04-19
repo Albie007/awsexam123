@@ -1,0 +1,36 @@
+[Unit]
+Description=TaskFlow – Gunicorn WSGI Server
+Documentation=https://docs.gunicorn.org
+After=network.target
+
+# Ensure the socket directory exists before starting
+Requires=taskflow.socket
+
+[Service]
+User=ubuntu
+Group=www-data
+WorkingDirectory=/home/ubuntu/awsexam12
+
+# Load .env variables
+EnvironmentFile=/home/ubuntu/awsexam12/.env
+
+# Use the gunicorn from the venv
+ExecStart=/home/ubuntu/awsexam12/venv/bin/gunicorn \
+          -c /home/ubuntu/awsexam12/gunicorn.conf.py \
+          awsproject.wsgi:application
+
+# Graceful restart on failure
+Restart=on-failure
+RestartSec=5
+
+# Logging
+StandardOutput=append:/var/log/taskflow/gunicorn.log
+StandardError=append:/var/log/taskflow/gunicorn-error.log
+
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+
+[Install]
+WantedBy=multi-user.target

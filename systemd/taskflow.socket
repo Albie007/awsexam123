@@ -1,0 +1,12 @@
+[Unit]
+Description=TaskFlow – Gunicorn Socket
+PartOf=taskflow.service
+
+[Socket]
+# Unix socket that Nginx will proxy to
+ListenStream=/run/taskflow/gunicorn.sock
+SocketUser=www-data
+SocketMode=0660
+
+[Install]
+WantedBy=sockets.target
